@@ -56,7 +56,7 @@ function _add_identities() {
   if [[ ! -d "$HOME/.ssh" ]]; then
     return
   fi
-  
+
   # if set add all identities in .ssh (prefixed with 'id_')
   if zstyle -t :plugin:zinit:ssh-agent-pass add-all; then
     identities+=($(ls -1 "$HOME/.ssh/id_"* | grep -v .pub))
@@ -71,7 +71,7 @@ function _add_identities() {
       [[ -f "$HOME/.ssh/$id" ]] && identities+=($id)
     done
   fi
-  
+
   # get list of loaded identities' signatures and filenames
   if lines=$(ssh-add -l); then
     for line in ${(f)lines}; do
@@ -102,7 +102,7 @@ function _add_identities() {
 
   # if ssh-agent quiet mode, pass -q to ssh-add
   zstyle -t :plugin:zinit:ssh-agent-pass quiet && args=(-q $args)
-  
+
   # try to open the identities with pass
   local pass_cmd
   # check if pass_cmd is overwritten, otherwise set to default ('pass')
@@ -121,9 +121,12 @@ function _add_identities() {
           if [[ -e "$file_path" ]]; then
               # use 'exec_cat' as SSH_ASKPASS command to be able to directly
               # pipe input from pass to the 'ssh-add' command
+              SSH_ASKPASS_REQUIRE='force' \
               SSH_ASKPASS="${Plugins[SSH_AGENT_PASS_DIR]}/exec_cat" \
                 ssh-add "${args[@]}" "$id" <<< `$pass_cmd ssh/$hostname/${id##*/}`
               [[ $? -eq 0 ]] && not_loaded=("${(@)not_loaded:#$id}")
+          else
+              echo >&2 "could not find password $file_path."
           fi
       done
   fi
@@ -148,6 +151,7 @@ function _add_identities() {
 if zstyle -t :plugin:zinit:ssh-agent-pass agent-forwarding \
    && [[ -n "$SSH_AUTH_SOCK" && ! -L "$SSH_AUTH_SOCK" ]]; then
   ln -sf "$SSH_AUTH_SOCK" /tmp/ssh-agent-$USERNAME-screen
+  agent_forwarding=true
 else
   _start_agent
 fi
