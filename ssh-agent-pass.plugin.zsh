@@ -60,16 +60,16 @@ function _add_identities() {
   # if set add all identities in .ssh (prefixed with 'id_')
   if zstyle -t :plugin:zinit:ssh-agent-pass add-all; then
     identities+=($(ls -1 "$HOME/.ssh/id_"* | grep -v .pub))
-  fi
-
-  # add default keys if no identities were set up via zstyle
-  # this is to mimic the call to ssh-add with no identities
-  if [[ ${#identities} -eq 0 ]]; then
-    # key list found on `ssh-add` man page's DESCRIPTION section
-    for id in id_rsa id_dsa id_ecdsa id_ed25519 identity; do
-      # check if file exists
-      [[ -f "$HOME/.ssh/$id" ]] && identities+=($id)
-    done
+  else
+    # add default keys if no identities were set up via zstyle
+    # this is to mimic the call to ssh-add with no identities
+    if [[ ${#identities} -eq 0 ]]; then
+      # key list found on `ssh-add` man page's DESCRIPTION section
+      for id in id_rsa id_dsa id_ecdsa id_ed25519 identity; do
+        # check if file exists
+        [[ -f "$HOME/.ssh/$id" ]] && identities+=($id)
+      done
+    fi
   fi
 
   # get list of loaded identities' signatures and filenames
@@ -139,12 +139,14 @@ function _add_identities() {
     if [[ -z "${commands[$helper]}" ]]; then
       echo >&2 "ssh-agent: the helper '$helper' has not been found."
     else
-      SSH_ASKPASS="$helper" ssh-add "${args[@]}" ${^not_loaded} < /dev/null
+      SSH_ASKPASS="$helper" ssh-add "${args[@]}" ${^noj_loaded} < /dev/null
       return $?
-    fi
+        fi
   fi
 
-  ssh-add "${args[@]}" ${^not_loaded}
+  if [[ ${#not_loaded} -ne 0 ]]; then
+    ssh-add "${args[@]}" ${^not_loaded}
+  fi
 }
 
 # Add a nifty symlink for screen/tmux if agent forwarding is enabled
